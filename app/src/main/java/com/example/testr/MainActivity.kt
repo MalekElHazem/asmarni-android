@@ -18,13 +18,15 @@ import com.google.mediapipe.framework.image.BitmapImageBuilder
 import com.google.mediapipe.framework.image.MPImage
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.handlandmarker.HandLandmarkerResult
+import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarkerResult
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
-class MainActivity : AppCompatActivity(), HandLandmarkerHelper.HandLandmarkerListener {
+class MainActivity : AppCompatActivity(), HandLandmarkerHelper.HandLandmarkerListener, PoseLandmarkerHelper.PoseLandmarkerListener {
     private lateinit var previewView: PreviewView
     private lateinit var overlayView: OverlayView
     private lateinit var handLandmarkerHelper: HandLandmarkerHelper
+    private lateinit var poseLandmarkerHelper: PoseLandmarkerHelper
     private lateinit var cameraExecutor: ExecutorService
     private lateinit var yuvConverter: YuvToRgbConverter
 
@@ -57,6 +59,8 @@ class MainActivity : AppCompatActivity(), HandLandmarkerHelper.HandLandmarkerLis
             context = this,
             listener = this
         )
+        poseLandmarkerHelper = PoseLandmarkerHelper(this, this)
+
     }
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
@@ -87,10 +91,11 @@ class MainActivity : AppCompatActivity(), HandLandmarkerHelper.HandLandmarkerLis
                                 imageProxy.imageInfo.rotationDegrees
                             )
                             val mpImage = BitmapImageBuilder(rotatedBitmap).build()
-                            handLandmarkerHelper.detectLiveStream(
-                                mpImage,
-                                SystemClock.uptimeMillis()
-                            )
+                            val timestamp = SystemClock.uptimeMillis()
+
+                            // Pass the frame to both detectors.
+                            handLandmarkerHelper.detectLiveStream(mpImage, timestamp)
+                            poseLandmarkerHelper.detectLiveStream(mpImage, timestamp)
                         } catch (e: Exception) {
                             Log.e(TAG, "Error processing image", e)
                         }
@@ -112,14 +117,19 @@ class MainActivity : AppCompatActivity(), HandLandmarkerHelper.HandLandmarkerLis
         }, ContextCompat.getMainExecutor(this))
     }
 
+    // Hand landmark results callback.
     override fun onResults(result: HandLandmarkerResult, input: MPImage) {
         runOnUiThread {
-            overlayView.setResults(
-                handLandmarkerResults = result,
-                imageHeight = input.height,
-                imageWidth = input.width,
-                runningMode = RunningMode.LIVE_STREAM
-            )
+            // You may create a dedicated method in your overlay to update hand results.
+            overlayView.setHandResults(result, input.height, input.width, RunningMode.LIVE_STREAM)
+        }
+    }
+
+    // Pose landmark results callback.
+    override fun onResults(result: PoseLandmarkerResult, input: MPImage) {
+        runOnUiThread {
+            // Create or update a method in your overlay for drawing pose results.
+            overlayView.setPoseResults(result, input.height, input.width, RunningMode.LIVE_STREAM)
         }
     }
 
@@ -147,6 +157,7 @@ class MainActivity : AppCompatActivity(), HandLandmarkerHelper.HandLandmarkerLis
     override fun onDestroy() {
         super.onDestroy()
         handLandmarkerHelper.clear()
+        poseLandmarkerHelper.clear()
         cameraExecutor.shutdown()
     }
 
