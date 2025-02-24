@@ -10,7 +10,11 @@ import androidx.core.content.ContextCompat
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.handlandmarker.HandLandmarker
 import com.google.mediapipe.tasks.vision.handlandmarker.HandLandmarkerResult
+import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarker
 import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarkerResult
+import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarker
+import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult
+
 import kotlin.math.max
 import kotlin.math.min
 
@@ -18,6 +22,8 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
 
     private var results: HandLandmarkerResult? = null
     private var poseResults: PoseLandmarkerResult? = null
+    private var faceResults: FaceLandmarkerResult? = null
+
     private var linePaint = Paint()
     private var pointPaint = Paint()
 
@@ -55,7 +61,7 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
         linePaint.strokeWidth = LANDMARK_STROKE_WIDTH
         linePaint.style = Paint.Style.STROKE
 
-        pointPaint.color = Color.YELLOW
+        pointPaint.color = Color.GREEN
         pointPaint.strokeWidth = LANDMARK_STROKE_WIDTH
         pointPaint.style = Paint.Style.FILL
     }
@@ -103,9 +109,9 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
                 }
 
                 // Draw connections
-                POSE_CONNECTIONS.forEach { connection ->
-                    val startIdx = connection.first
-                    val endIdx = connection.second
+                PoseLandmarker.POSE_LANDMARKS.forEach { connection ->
+                    val startIdx = connection.start()
+                    val endIdx = connection.end()
                     if (startIdx < landmarkList.size && endIdx < landmarkList.size) {
                         val startLandmark = landmarkList[startIdx]
                         val endLandmark = landmarkList[endIdx]
@@ -119,6 +125,39 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
                 }
             }
         }
+
+        // Update the face drawing section in OverlayView.kt
+        faceResults?.let { result ->
+            val effectiveImageWidth = imageWidth * scaleFactor
+            val offsetX = (width - effectiveImageWidth) / 2f
+
+            result.faceLandmarks().forEach { faceLandmarks ->
+                // Draw points
+                faceLandmarks.forEach { landmark ->
+                    val flippedX = offsetX + effectiveImageWidth - (landmark.x() * effectiveImageWidth)
+                    val y = landmark.y() * imageHeight * scaleFactor
+                    canvas.drawPoint(flippedX, y, pointPaint)
+                }
+
+                // Draw face connections
+                FaceLandmarker.FACE_LANDMARKS_CONNECTORS.forEach { connection ->
+                    val start = connection.start()
+                    val end = connection.end()
+                    if (start < faceLandmarks.size && end < faceLandmarks.size) {
+                        val startLandmark = faceLandmarks[start]
+                        val endLandmark = faceLandmarks[end]
+
+                        val startX = offsetX + effectiveImageWidth - (startLandmark.x() * effectiveImageWidth)
+                        val startY = startLandmark.y() * imageHeight * scaleFactor
+                        val endX = offsetX + effectiveImageWidth - (endLandmark.x() * effectiveImageWidth)
+                        val endY = endLandmark.y() * imageHeight * scaleFactor
+
+                        canvas.drawLine(startX, startY, endX, endY, linePaint)
+                    }
+                }
+            }
+        }
+
 
     }
 
@@ -154,35 +193,23 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
         invalidate()
     }
 
+    fun setFaceResults(
+        faceLandmarkerResult: FaceLandmarkerResult,
+        imageHeight: Int,
+        imageWidth: Int,
+        runningMode: RunningMode = RunningMode.IMAGE
+    ) {
+        this.faceResults = faceLandmarkerResult
+        this.imageHeight = imageHeight
+        this.imageWidth = imageWidth
+        scaleFactor = when (runningMode) {
+            RunningMode.IMAGE, RunningMode.VIDEO -> min(width * 1f / imageWidth, height * 1f / imageHeight)
+            RunningMode.LIVE_STREAM -> max(width * 1f / imageWidth, height * 1f / imageHeight)
+        }
+        invalidate()
+    }
+
     companion object {
-        private const val LANDMARK_STROKE_WIDTH = 8F
-
-        // Pose landmark connections for full body
-        private val POSE_CONNECTIONS = listOf(
-            // Face connections
-            Pair(0, 1), Pair(1, 2), Pair(2, 3), Pair(3, 7), // Left eye to ear
-            Pair(0, 4), Pair(4, 5), Pair(5, 6), Pair(6, 8), // Right eye to ear
-            Pair(9, 10), // Mouth left to right
-
-            // Upper body connections
-            Pair(11, 12), // Shoulders
-            Pair(11, 13), Pair(13, 15), // Left arm: Shoulder -> Elbow -> Wrist
-            Pair(15, 17), Pair(15, 19), Pair(15, 21), // Left wrist to pinky, index, thumb
-            Pair(17, 19), Pair(19, 21), // Left fingers
-            Pair(12, 14), Pair(14, 16), // Right arm: Shoulder -> Elbow -> Wrist
-            Pair(16, 18), Pair(16, 20), Pair(16, 22), // Right wrist to pinky, index, thumb
-            Pair(18, 20), Pair(20, 22), // Right fingers
-
-            // Lower body connections
-            Pair(11, 23), Pair(12, 24), // Shoulders to hips
-            Pair(23, 24), // Hips
-            Pair(23, 25), Pair(25, 27), // Left hip -> knee -> ankle
-            Pair(27, 29), Pair(27, 31), // Left ankle -> heel, foot index
-            Pair(29, 31), // Left heel to foot index
-            Pair(24, 26), Pair(26, 28), // Right hip -> knee -> ankle
-            Pair(28, 30), Pair(28, 32), // Right ankle -> heel, foot index
-            Pair(30, 32) // Right heel to foot index
-        )
-
+        private const val LANDMARK_STROKE_WIDTH = 6F
     }
 }

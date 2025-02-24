@@ -3,5 +3,14 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
     <color name="mp_color_primary">#A500FF</color>
+    <color name="mp_hand_color">#00FFE0</color>       <!-- Cyan -->
+    <color name="mp_hand_point_color">#00BFFF</color> <!-- Deep Sky Blue -->
 
+    <color name="mp_pose_color">#FF69B4</color>       <!-- Hot Pink -->
+    <color name="mp_pose_point_color">#FF1493</color> <!-- Deep Pink -->
+
+    <color name="mp_face_color">#98FB98</color>       <!-- Pale Green -->
+    <color name="mp_face_point_color">#32CD32</color> <!-- Lime Green -->
+
+    <color name="mp_iris_color">#FFD700</color>       <!-- Gold -->
 </resources>

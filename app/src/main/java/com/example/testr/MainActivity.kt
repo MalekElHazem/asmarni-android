@@ -17,16 +17,20 @@ import androidx.core.content.ContextCompat
 import com.google.mediapipe.framework.image.BitmapImageBuilder
 import com.google.mediapipe.framework.image.MPImage
 import com.google.mediapipe.tasks.vision.core.RunningMode
+import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult
 import com.google.mediapipe.tasks.vision.handlandmarker.HandLandmarkerResult
 import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarkerResult
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
-class MainActivity : AppCompatActivity(), HandLandmarkerHelper.HandLandmarkerListener, PoseLandmarkerHelper.PoseLandmarkerListener {
+class MainActivity : AppCompatActivity(), HandLandmarkerHelper.HandLandmarkerListener, PoseLandmarkerHelper.PoseLandmarkerListener,  FaceLandmarkerHelper.FaceLandmarkerListener {
     private lateinit var previewView: PreviewView
     private lateinit var overlayView: OverlayView
+
     private lateinit var handLandmarkerHelper: HandLandmarkerHelper
     private lateinit var poseLandmarkerHelper: PoseLandmarkerHelper
+    private lateinit var faceLandmarkerHelper: FaceLandmarkerHelper
+
     private lateinit var cameraExecutor: ExecutorService
     private lateinit var yuvConverter: YuvToRgbConverter
 
@@ -60,6 +64,11 @@ class MainActivity : AppCompatActivity(), HandLandmarkerHelper.HandLandmarkerLis
             listener = this
         )
         poseLandmarkerHelper = PoseLandmarkerHelper(this, this)
+        faceLandmarkerHelper = FaceLandmarkerHelper(
+            context = this,
+            listener = this
+        )
+
 
     }
 
@@ -96,6 +105,7 @@ class MainActivity : AppCompatActivity(), HandLandmarkerHelper.HandLandmarkerLis
                             // Pass the frame to both detectors.
                             handLandmarkerHelper.detectLiveStream(mpImage, timestamp)
                             poseLandmarkerHelper.detectLiveStream(mpImage, timestamp)
+                            faceLandmarkerHelper.detectLiveStream(mpImage, timestamp)
                         } catch (e: Exception) {
                             Log.e(TAG, "Error processing image", e)
                         }
@@ -133,6 +143,14 @@ class MainActivity : AppCompatActivity(), HandLandmarkerHelper.HandLandmarkerLis
         }
     }
 
+    override fun onResults(result: FaceLandmarkerResult, input: MPImage) {
+        runOnUiThread {
+            // Update overlay view with face landmarks
+            overlayView.setFaceResults(result, input.height, input.width, RunningMode.LIVE_STREAM)
+        }
+    }
+
+
     override fun onError(error: String) {
         runOnUiThread {
             Toast.makeText(this, error, Toast.LENGTH_SHORT).show()
@@ -158,6 +176,7 @@ class MainActivity : AppCompatActivity(), HandLandmarkerHelper.HandLandmarkerLis
         super.onDestroy()
         handLandmarkerHelper.clear()
         poseLandmarkerHelper.clear()
+        faceLandmarkerHelper.clear()
         cameraExecutor.shutdown()
     }
 
