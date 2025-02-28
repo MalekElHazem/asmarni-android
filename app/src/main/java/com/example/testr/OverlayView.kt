@@ -14,7 +14,6 @@ import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarker
 import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarkerResult
 import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarker
 import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult
-
 import kotlin.math.max
 import kotlin.math.min
 
@@ -26,6 +25,10 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
 
     private var linePaint = Paint()
     private var pointPaint = Paint()
+    private var textPaint = Paint()
+
+    // For displaying the detected sentence
+    private var sentenceText: String = ""
 
     private var scaleFactor: Float = 1f
     private var imageWidth: Int = 1
@@ -42,7 +45,6 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
         return Pair(newX, newY)
     }
 
-
     init {
         initPaints()
     }
@@ -50,8 +52,11 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
     fun clear() {
         results = null
         poseResults = null
+        faceResults = null
+        sentenceText = ""
         linePaint.reset()
         pointPaint.reset()
+        textPaint.reset()
         invalidate()
         initPaints()
     }
@@ -64,6 +69,10 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
         pointPaint.color = Color.GREEN
         pointPaint.strokeWidth = LANDMARK_STROKE_WIDTH
         pointPaint.style = Paint.Style.FILL
+
+        textPaint.color = Color.WHITE
+        textPaint.textSize = 48f  // Adjust size as needed
+        textPaint.style = Paint.Style.FILL
     }
 
     override fun draw(canvas: Canvas) {
@@ -105,7 +114,6 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
                     val y = normalizedLandmark.y() * imageHeight * scaleFactor
                     val (smoothX, smoothY) = smoothLandmark(index, flippedX, y)
                     canvas.drawPoint(smoothX, smoothY, pointPaint)
-
                 }
 
                 // Draw connections
@@ -126,7 +134,7 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
             }
         }
 
-        // Update the face drawing section in OverlayView.kt
+        // Face landmarks
         faceResults?.let { result ->
             val effectiveImageWidth = imageWidth * scaleFactor
             val offsetX = (width - effectiveImageWidth) / 2f
@@ -158,7 +166,11 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
             }
         }
 
-
+        // Draw the sentence text (if available) at the bottom of the view.
+        if (sentenceText.isNotEmpty()) {
+            // For example, display the sentence in the bottom-left corner.
+            canvas.drawText(sentenceText, 20f, height - 40f, textPaint)
+        }
     }
 
     fun setHandResults(
@@ -206,6 +218,12 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
             RunningMode.IMAGE, RunningMode.VIDEO -> min(width * 1f / imageWidth, height * 1f / imageHeight)
             RunningMode.LIVE_STREAM -> max(width * 1f / imageWidth, height * 1f / imageHeight)
         }
+        invalidate()
+    }
+
+    // Update the sentence text to be drawn on the overlay.
+    fun updateSentence(sentence: String) {
+        sentenceText = sentence
         invalidate()
     }
 

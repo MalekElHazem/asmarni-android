@@ -36,6 +36,18 @@ android {
     buildFeatures {
         viewBinding = true
     }
+    configurations.all {
+        exclude(group = "com.intellij", module = "annotations")
+        resolutionStrategy {
+            force("org.tensorflow:tensorflow-lite:latest.release")
+            force("org.tensorflow:tensorflow-lite-select-tf-ops:latest.release")
+
+        }
+    }
+    packagingOptions {
+        // Exclude duplicate files
+        exclude("META-INF/gradle/incremental.annotation.processors")
+    }
 }
 
 dependencies {
@@ -45,6 +57,8 @@ dependencies {
     implementation(libs.activity)
     implementation(libs.constraintlayout)
     implementation(libs.core.ktx)
+    implementation(libs.room.compiler)
+    //implementation(libs.litert)
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
@@ -58,6 +72,12 @@ dependencies {
 
 
     implementation("com.google.mediapipe:tasks-vision:latest.release")
+
+    // TensorFlow Lite core library
+    implementation("org.tensorflow:tensorflow-lite:latest.release")
+    implementation("org.tensorflow:tensorflow-lite-select-tf-ops:latest.release")
+
+    implementation("org.jetbrains:annotations:13.0")
 
 
 
